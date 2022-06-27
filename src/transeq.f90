@@ -69,6 +69,10 @@ contains
 
     integer :: i,j,k,is
 
+    real(mytype), allocatable, dimension(:,:,:) :: ypencilu, ypencilv, ypencilw, &
+        ypencilvu, ypencilvv, ypencilvw, ypencilt1, ypencilt2, ypencilt3, &
+        ypencilt4, ypencilt5, ypencilt6
+
     !SKEW SYMMETRIC FORM
     !WORK X-PENCILS
     ta1(:,:,:) = ux1(:,:,:) * ux1(:,:,:)
@@ -93,6 +97,48 @@ contains
     call transpose_x_to_y(uy1,uy2)
     call transpose_x_to_y(uz1,uz2)
 
+
+    allocate(ypencilu(ysize(2), ysize(1), ysize(3)))
+    allocate(ypencilv(ysize(2), ysize(1), ysize(3)))
+    allocate(ypencilw(ysize(2), ysize(1), ysize(3)))
+    allocate(ypencilvu(ysize(2), ysize(1), ysize(3)))
+    allocate(ypencilvv(ysize(2), ysize(1), ysize(3)))
+    allocate(ypencilvw(ysize(2), ysize(1), ysize(3)))
+    allocate(ypencilt1(ysize(2), ysize(1), ysize(3)))
+    allocate(ypencilt2(ysize(2), ysize(1), ysize(3)))
+    allocate(ypencilt3(ysize(2), ysize(1), ysize(3)))
+    allocate(ypencilt4(ysize(2), ysize(1), ysize(3)))
+    allocate(ypencilt5(ysize(2), ysize(1), ysize(3)))
+    allocate(ypencilt6(ysize(2), ysize(1), ysize(3)))
+
+    !mat = reshape( [1,2,3,4,5,6,7,8], [2,4], order=[2,1] )
+    ypencilu = reshape(ux2, [ysize(2), ysize(1), ysize(3)], order=[2,1,3])
+    ypencilv = reshape(uy2, [ysize(2), ysize(1), ysize(3)], order=[2,1,3])
+    ypencilw = reshape(uz2, [ysize(2), ysize(1), ysize(3)], order=[2,1,3])
+
+    ypencilvu = ypencilv*ypencilu
+    ypencilvv = ypencilv*ypencilv
+    ypencilvw = ypencilv*ypencilw
+
+    !define ypencilt1, ypencilt2, ypencilt3...
+
+    call derx (ypencilt1, ypencilvu,di1,sx,ffxp,fsxp,fwxp,xsize(1),xsize(2),xsize(3),1)
+    call derx (ypencilt2, ypencilvv,di1,sx,ffx,fsx,fwx,xsize(1),xsize(2),xsize(3),0)
+    call derx (ypencilt3, ypencilvw,di1,sx,ffx,fsx,fwx,xsize(1),xsize(2),xsize(3),0)
+    call derx (ypencilt4, ypencilu,di1,sx,ffx,fsx,fwx,xsize(1),xsize(2),xsize(3),0)
+    call derx (ypencilt5, ypencilv,di1,sx,ffxp,fsxp,fwxp,xsize(1),xsize(2),xsize(3),1)
+    call derx (ypencilt6, ypencilw,di1,sx,ffxp,fsxp,fwxp,xsize(1),xsize(2),xsize(3),1)
+
+    ! convective terms of y-pencil
+    ypencilt1 = ypencilt1 + ypencilv*ypencilt4
+    ypencilt2 = ypencilt2 + ypencilv*ypencilt5
+    ypencilt3 = ypencilt3 + ypencilv*ypencilt6
+
+    tg2 = reshape(ypencilt1, [ysize(1), ysize(2), ysize(3)], order=[2,1,3])
+    th2 = reshape(ypencilt2, [ysize(1), ysize(2), ysize(3)], order=[2,1,3])
+    ti2 = reshape(ypencilt3, [ysize(1), ysize(2), ysize(3)], order=[2,1,3])
+
+    if (.false.) then
     !WORK Y-PENCILS
     td2(:,:,:) = ux2(:,:,:) * uy2(:,:,:)
     te2(:,:,:) = uy2(:,:,:) * uy2(:,:,:)
@@ -111,7 +157,8 @@ contains
     ti2(:,:,:) = ti2(:,:,:) + uy2(:,:,:) * tf2(:,:,:)
 
     call test_dv(te2)
-    
+    end if
+
     call transpose_y_to_z(ux2,ux3)
     call transpose_y_to_z(uy2,uy3)
     call transpose_y_to_z(uz2,uz3)
